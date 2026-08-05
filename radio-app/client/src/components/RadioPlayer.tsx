@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 // Estações cujo servidor de áudio só aceita HTTP (não suportam TLS/HTTPS).
 // Se o cliente tentar https nesses hosts, o browser lança ERR_SSL_PROTOCOL_ERROR.
-const HTTP_ONLY_STREAM_HOSTS = ["a1rj.streams.com.br"];
+const HTTP_ONLY_STREAM_HOSTS = ["a1rj.streams.com.br", "servidor36.brlogic.com"];
 
 // Normaliza a URL de streaming: para hosts na lista acima, força http no lugar
 // de https. Não afeta as demais estações, que continuam usando https normalmente.

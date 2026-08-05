@@ -148,7 +148,7 @@ export const RJ_STATIONS: RJStation[] = [
     frequency: "95.1 FM",
     genre: "Pop, MÃºsica",
     city: "Rio de Janeiro",
-    url: "https://27373.live.streamtheworld.com/POSITIVIDADE_FMAAC.aac",
+    url: "https://27573.live.streamtheworld.com/POSITIVIDADE_FM_SC",
     favicon:
       "https://positividade.fm/wp-content/uploads/2022/04/favicon-32x32-1.png",
   },
