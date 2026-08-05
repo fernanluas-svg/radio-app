@@ -22,11 +22,11 @@ export default function StationCard({
   onPlay,
 }: StationCardProps) {
   const handlePlay = () => {
-    onPlay({ id: url, name, url, country, favicon });
+    onPlay({ id, name, url, country, favicon });
   };
 
   return (
-    <div className="group relative overflow-hidden rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+    <div className="group relative overflow-hidden rounded-xl bg-card border border-border shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity duration-300"
@@ -38,7 +38,7 @@ export default function StationCard({
       />
 
       {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 to-white" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-card/50 to-card" />
 
       {/* Content */}
       <div className="relative p-4 h-full flex flex-col justify-between">
@@ -54,10 +54,10 @@ export default function StationCard({
               }}
             />
           )}
-          <h3 className="font-display font-bold text-gray-900 text-base line-clamp-2">
+          <h3 className="font-display font-bold text-card-foreground text-base line-clamp-2">
             {name}
           </h3>
-          <p className="text-xs text-gray-500 font-sans mt-1">{country}</p>
+          <p className="text-xs text-muted-foreground font-sans mt-1">{country}</p>
         </div>
 
         {/* Play Button */}

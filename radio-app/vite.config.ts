@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { apiRouter } from "./server/api/index";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -203,7 +204,25 @@ function vitePluginStorageProxy(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy()];
+/**
+ * Exposes the shared `/api` router on the Vite dev server so development
+ * works without running the production Express server.
+ */
+function vitePluginApiDev(): Plugin {
+  return {
+    name: "api-dev-middleware",
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use("/api", (req, res, next) => {
+        apiRouter(req, res, () => {
+          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.end(JSON.stringify({ error: "Not found" }));
+        });
+      });
+    },
+  };
+}
+
+const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginApiDev()];
 
 export default defineConfig({
   plugins,

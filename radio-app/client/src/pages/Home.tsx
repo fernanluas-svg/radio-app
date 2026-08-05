@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Loader2, AlertCircle } from "lucide-react";
 import Header from "@/components/Header";
 import StationCard from "@/components/StationCard";
 import RadioPlayer from "@/components/RadioPlayer";
+import RJSection from "@/components/RJSection";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -44,25 +44,23 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
 
-  // Fetch stations from Radio Browser API
+  // Fetch stations from Radio Browser API (proxied via our server)
   const fetchStations = async (country: string, query: string = "") => {
     setIsLoading(true);
     setError(null);
     try {
-      let url = `https://de1.api.radio-browser.info/json/stations/search?`;
+      let url = `/api/stations/search?countrycode=${encodeURIComponent(country)}`;
 
       if (query) {
-        url += `name=${encodeURIComponent(query)}&`;
+        url += `&name=${encodeURIComponent(query)}`;
       }
-
-      url += `countrycode=${country}&limit=50&order=votes&reverse=true`;
 
       const response = await fetch(url);
       if (!response.ok) throw new Error("Erro ao buscar estações");
 
       const data = await response.json();
-      setStations(data);
-      setFilteredStations(data);
+      setStations(data.stations);
+      setFilteredStations(data.stations);
     } catch (err) {
       setError("Erro ao carregar estações. Tente novamente.");
       console.error(err);
@@ -74,31 +72,44 @@ export default function Home() {
   // Initial load
   useEffect(() => {
     fetchStations("BR");
+    return () => {
+      if (searchTimer.current) {
+        clearTimeout(searchTimer.current);
+      }
+    };
   }, []);
 
   // Handle country change
   const handleCountryChange = (country: string) => {
+    if (searchTimer.current) {
+      clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    }
     setSelectedCountry(country);
     setSearchQuery("");
     fetchStations(country);
   };
 
-  // Handle search
-  const handleSearch = (query: string) => {
+  // Handle search (debounced to avoid a request per keystroke)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
-    if (query.trim()) {
-      fetchStations(selectedCountry, query);
-    } else {
-      fetchStations(selectedCountry);
+
+    if (searchTimer.current) {
+      clearTimeout(searchTimer.current);
     }
-  };
+
+    searchTimer.current = setTimeout(() => {
+      fetchStations(selectedCountry, query);
+    }, 400);
+  }, [selectedCountry]);
 
   const handleStationPlay = (station: Station) => {
     setCurrentStation(station);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
       <Header />
 
       {/* Hero Section */}
@@ -114,16 +125,16 @@ export default function Home() {
 
         <div className="container relative z-10">
           <div className="max-w-2xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-display font-bold text-gray-900 mb-3 text-center">
+            <h1 className="text-4xl md:text-5xl font-display font-bold text-card-foreground mb-3 text-center">
               Descubra rádios incríveis
             </h1>
-            <p className="text-lg text-gray-600 font-sans text-center mb-8">
+            <p className="text-lg text-muted-foreground font-sans text-center mb-8">
               Transmita estações de rádio do Brasil e do mundo inteiro
             </p>
 
             {/* Search Bar */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Buscar rádios..."
@@ -136,10 +147,13 @@ export default function Home() {
         </div>
       </section>
 
+      {/* RJ Stations - via internal API */}
+      <RJSection onPlay={handleStationPlay} />
+
       {/* Filters */}
       <section className="container py-6 md:py-8">
         <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-          <label className="text-sm font-sans font-medium text-gray-700">
+          <label className="text-sm font-sans font-medium text-card-foreground">
             País:
           </label>
           <Select value={selectedCountry} onValueChange={handleCountryChange}>
@@ -169,12 +183,12 @@ export default function Home() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-gray-600 font-sans">Carregando estações...</p>
+            <p className="text-muted-foreground font-sans">Carregando estações...</p>
           </div>
         ) : filteredStations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <AlertCircle className="w-10 h-10 text-gray-300 mb-4" />
-            <p className="text-gray-600 font-sans text-center">
+            <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground font-sans text-center">
               Nenhuma rádio encontrada. Tenta outro termo?
             </p>
           </div>

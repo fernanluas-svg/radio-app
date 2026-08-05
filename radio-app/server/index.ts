@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import path from "path";
 import { fileURLToPath } from "url";
+import { apiRouter } from "./api/index";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,6 +10,14 @@ const __dirname = path.dirname(__filename);
 async function startServer() {
   const app = express();
   const server = createServer(app);
+
+  app.use(express.json());
+
+  // APIs
+  app.use("/api", apiRouter);
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "Not found" });
+  });
 
   // Serve static files from dist/public in production
   const staticPath =
