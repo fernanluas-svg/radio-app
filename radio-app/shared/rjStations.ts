@@ -24,7 +24,7 @@ export const RJ_STATIONS: RJStation[] = [
     frequency: "103.7 FM",
     genre: "Adult Contemporary, MPB",
     city: "Rio de Janeiro",
-    url: "http://a1rj.streams.com.br:7801/stream",
+    url: "https://antena1campanha.crossradio.com.br:29090/camp3",
     favicon:
       "https://www.antena1rio.com.br/wp-content/uploads/2024/01/logo-antena-1.png",
   },
