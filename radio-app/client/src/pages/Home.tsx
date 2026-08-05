@@ -5,6 +5,7 @@ import StationCard from "@/components/StationCard";
 import RadioPlayer from "@/components/RadioPlayer";
 import RJSection from "@/components/RJSection";
 import { useFavorites } from "@/hooks/useFavorites";
+import { RJ_STATIONS, type RJStation } from "@shared/rjStations";
 import {
   searchStations,
   toStationCard,
@@ -50,6 +51,16 @@ const STATES = [
   { code: "Ceará", name: "Ceará" },
 ];
 
+// Rádios da lista curada do RJ, convertidas para o formato de card do app,
+// para que favoritas do RJ também apareçam na visão "Favoritos".
+const rjFavoriteCards: Station[] = (RJ_STATIONS as RJStation[]).map((s) => ({
+  id: s.id,
+  name: s.name,
+  url: s.url,
+  favicon: s.favicon,
+  country: `RJ • ${s.city}`,
+}));
+
 export default function Home() {
   const [stations, setStations] = useState<Station[]>([]);
   const [filteredStations, setFilteredStations] = useState<Station[]>([]);
@@ -58,13 +69,17 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
-  const [view, setView] = useState<"all" | "favorites">("all");
+  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
 
-  const visibleStations =
-    view === "favorites"
-      ? filteredStations.filter((s) => favorites.has(s.id))
-      : filteredStations;
+  // Lista unificada (RJ + busca) para a visão de favoritos, deduplicada por id.
+  const visibleStations = showOnlyFavorites
+    ? Array.from(
+        new Map(
+          [...rjFavoriteCards, ...filteredStations].map((s) => [s.id, s]),
+        ).values(),
+      ).filter((s) => favorites.has(s.id))
+    : filteredStations;
 
   // Busca estações direto na Radio-Browser API (com fallback de proxy CORS).
   const fetchStations = async (country: string, query: string = "", state: string = "") => {
@@ -114,11 +129,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
       <Header
-        favoritesActive={view === "favorites"}
+        favoritesActive={showOnlyFavorites}
         onFavoritesClick={() =>
-          setView((v) => (v === "favorites" ? "all" : "favorites"))
+          setShowOnlyFavorites((f) => !f)
         }
-        onHomeClick={() => setView("all")}
+        onHomeClick={() => setShowOnlyFavorites(false)}
       />
 
       {/* Hero Section */}
@@ -144,12 +159,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* RJ Stations - lista curada local */}
-      <RJSection
-        onPlay={handleStationPlay}
-        favorites={favorites}
-        onToggleFavorite={toggleFavorite}
-      />
+      {/* RJ Stations - lista curada local (oculta na visão de favoritos) */}
+      {!showOnlyFavorites && (
+        <RJSection
+          onPlay={handleStationPlay}
+          favorites={favorites}
+          onToggleFavorite={toggleFavorite}
+        />
+      )}
 
       {/* Filters */}
       <section className="container py-6 md:py-8">
@@ -208,7 +225,7 @@ export default function Home() {
           </div>
         ) : visibleStations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            {view === "favorites" ? (
+            {showOnlyFavorites ? (
               <>
                 <Star className="w-10 h-10 text-yellow-400 mb-4" />
                 <p className="text-muted-foreground font-sans text-center">
