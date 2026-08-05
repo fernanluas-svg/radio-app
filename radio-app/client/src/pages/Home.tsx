@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, AlertCircle } from "lucide-react";
 import Header from "@/components/Header";
 import StationCard from "@/components/StationCard";
 import RadioPlayer from "@/components/RadioPlayer";
@@ -9,7 +9,6 @@ import {
   toStationCard,
   type RadioStationCard,
 } from "@/lib/radioApi";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -53,8 +52,7 @@ const STATES = [
 export default function Home() {
   const [stations, setStations] = useState<Station[]>([]);
   const [filteredStations, setFilteredStations] = useState<Station[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCountry, setSelectedCountry] = useState("BR");
+  const [selectedCountry, setSelectedCountry] = useState("BR");
   const [selectedState, setSelectedState] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,53 +83,21 @@ export default function Home() {
   // Initial load
   useEffect(() => {
     fetchStations("BR");
-    return () => {
-      if (searchTimer.current) {
-        clearTimeout(searchTimer.current);
-      }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle country change
   const handleCountryChange = (country: string) => {
-    if (searchTimer.current) {
-      clearTimeout(searchTimer.current);
-      searchTimer.current = null;
-    }
     setSelectedCountry(country);
     setSelectedState("");
-    setSearchQuery("");
     fetchStations(country);
   };
 
   // Handle state change (estados brasileiros)
   const handleStateChange = (state: string) => {
-    if (searchTimer.current) {
-      clearTimeout(searchTimer.current);
-      searchTimer.current = null;
-    }
     setSelectedState(state);
-    setSearchQuery("");
     fetchStations(selectedCountry, "", state === "all" ? "" : state);
   };
-
-  // Handle search (debounced to avoid a request per keystroke)
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleSearch = useCallback((query: string) => {
-    setSearchQuery(query);
-
-    if (searchTimer.current) {
-      clearTimeout(searchTimer.current);
-    }
-
-    searchTimer.current = setTimeout(() => {
-      fetchStations(
-        selectedCountry,
-        query,
-        selectedState === "all" ? "" : selectedState,
-      );
-    }, 400);
-  }, [selectedCountry, selectedState]);
 
   const handleStationPlay = (station: Station) => {
     setCurrentStation(station);
@@ -157,21 +123,9 @@ export default function Home() {
             <h1 className="text-4xl md:text-5xl font-display font-bold text-card-foreground mb-3 text-center">
               Descubra rádios incríveis
             </h1>
-            <p className="text-lg text-muted-foreground font-sans text-center mb-8">
+            <p className="text-lg text-muted-foreground font-sans text-center">
               Transmita estações de rádio do Brasil e do mundo inteiro
             </p>
-
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Buscar rádios..."
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="pl-12 pr-4 py-3 md:py-4 text-base rounded-xl border-2 border-gray-200 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-            </div>
           </div>
         </div>
       </section>
