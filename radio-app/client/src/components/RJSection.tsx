@@ -14,6 +14,8 @@ function toStationCard(station: RJStation) {
 
 export default function RJSection({
   onPlay,
+  favorites,
+  onToggleFavorite,
 }: {
   onPlay: (station: {
     id: string;
@@ -22,6 +24,8 @@ export default function RJSection({
     country: string;
     favicon?: string;
   }) => void;
+  favorites: Set<string>;
+  onToggleFavorite: (id: string) => void;
 }) {
   const stations = RJ_STATIONS;
 
@@ -41,6 +45,8 @@ export default function RJSection({
               key={station.id}
               {...toStationCard(station)}
               onPlay={onPlay}
+              isFavorite={favorites.has(station.id)}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>

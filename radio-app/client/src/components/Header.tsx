@@ -1,7 +1,17 @@
-import { Moon, Music, Sun } from "lucide-react";
+import { Home, Moon, Music, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 
-export default function Header() {
+interface HeaderProps {
+  favoritesActive?: boolean;
+  onFavoritesClick?: () => void;
+  onHomeClick?: () => void;
+}
+
+export default function Header({
+  favoritesActive = false,
+  onFavoritesClick,
+  onHomeClick,
+}: HeaderProps) {
   const { theme, toggleTheme, switchable } = useTheme();
 
   return (
@@ -22,18 +32,33 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Navigation (placeholder for future features) */}
+        {/* Navigation */}
         <nav className="hidden md:flex gap-8">
-          <a href="#" className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors">
+          <button
+            onClick={onFavoritesClick}
+            className={`font-sans text-sm transition-colors ${
+              favoritesActive
+                ? "text-primary font-semibold"
+                : "text-muted-foreground hover:text-primary"
+            }`}
+          >
             Favoritos
-          </a>
+          </button>
           <a href="#" className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors">
             Histórico
           </a>
         </nav>
 
-        {/* Day/Night theme toggle + settings placeholder */}
+        {/* Day/Night theme toggle + navigation + settings placeholder */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={onHomeClick}
+            className="p-2 hover:bg-muted rounded-lg transition-colors"
+            aria-label="Voltar ao início"
+            title="Início"
+          >
+            <Home className="w-5 h-5 text-muted-foreground" />
+          </button>
           {switchable && toggleTheme && (
             <button
               onClick={toggleTheme}

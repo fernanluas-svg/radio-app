@@ -1,4 +1,4 @@
-import { Play } from "lucide-react";
+import { Play, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Station {
@@ -11,6 +11,8 @@ interface Station {
 
 interface StationCardProps extends Station {
   onPlay: (station: Station) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: (id: string) => void;
 }
 
 export default function StationCard({
@@ -20,13 +22,36 @@ export default function StationCard({
   favicon,
   url,
   onPlay,
+  isFavorite = false,
+  onToggleFavorite,
 }: StationCardProps) {
   const handlePlay = () => {
     onPlay({ id, name, url, country, favicon });
   };
 
+  const handleToggleFavorite = () => {
+    onToggleFavorite?.(id);
+  };
+
   return (
     <div className="group relative overflow-hidden rounded-xl bg-card border border-border shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+      {/* Favorite Star */}
+      <button
+        onClick={handleToggleFavorite}
+        className="absolute top-3 right-3 z-20 p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+        aria-label={
+          isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"
+        }
+        title={isFavorite ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+      >
+        <Star
+          className={`w-5 h-5 transition-colors ${
+            isFavorite
+              ? "fill-yellow-400 text-yellow-400"
+              : "fill-transparent text-muted-foreground/70 group-hover:text-muted-foreground"
+          }`}
+        />
+      </button>
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity duration-300"

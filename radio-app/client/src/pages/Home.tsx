@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Star } from "lucide-react";
 import Header from "@/components/Header";
 import StationCard from "@/components/StationCard";
 import RadioPlayer from "@/components/RadioPlayer";
 import RJSection from "@/components/RJSection";
+import { useFavorites } from "@/hooks/useFavorites";
 import {
   searchStations,
   toStationCard,
@@ -57,6 +58,13 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
+  const [view, setView] = useState<"all" | "favorites">("all");
+  const { favorites, toggleFavorite } = useFavorites();
+
+  const visibleStations =
+    view === "favorites"
+      ? filteredStations.filter((s) => favorites.has(s.id))
+      : filteredStations;
 
   // Busca estações direto na Radio-Browser API (com fallback de proxy CORS).
   const fetchStations = async (country: string, query: string = "", state: string = "") => {
@@ -105,7 +113,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <Header />
+      <Header
+        favoritesActive={view === "favorites"}
+        onFavoritesClick={() =>
+          setView((v) => (v === "favorites" ? "all" : "favorites"))
+        }
+        onHomeClick={() => setView("all")}
+      />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-8 md:py-12">
@@ -131,7 +145,11 @@ export default function Home() {
       </section>
 
       {/* RJ Stations - lista curada local */}
-      <RJSection onPlay={handleStationPlay} />
+      <RJSection
+        onPlay={handleStationPlay}
+        favorites={favorites}
+        onToggleFavorite={toggleFavorite}
+      />
 
       {/* Filters */}
       <section className="container py-6 md:py-8">
@@ -188,16 +206,27 @@ export default function Home() {
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
             <p className="text-muted-foreground font-sans">Carregando estações...</p>
           </div>
-        ) : filteredStations.length === 0 ? (
+        ) : visibleStations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground font-sans text-center">
-              Nenhuma rádio encontrada. Tenta outro termo?
-            </p>
+            {view === "favorites" ? (
+              <>
+                <Star className="w-10 h-10 text-yellow-400 mb-4" />
+                <p className="text-muted-foreground font-sans text-center">
+                  Você ainda não adicionou nenhuma rádio aos favoritos
+                </p>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-sans text-center">
+                  Nenhuma rádio encontrada. Tenta outro termo?
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {filteredStations.map((station) => (
+            {visibleStations.map((station) => (
               <StationCard
                 key={station.id}
                 id={station.id}
@@ -206,6 +235,8 @@ export default function Home() {
                 favicon={station.favicon}
                 url={station.url}
                 onPlay={handleStationPlay}
+                isFavorite={favorites.has(station.id)}
+                onToggleFavorite={toggleFavorite}
               />
             ))}
           </div>
