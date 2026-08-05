@@ -2,6 +2,30 @@ import { useState, useRef, useEffect } from "react";
 import { Play, Pause, Volume2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// Estações cujo servidor de áudio só aceita HTTP (não suportam TLS/HTTPS).
+// Se o cliente tentar https nesses hosts, o browser lança ERR_SSL_PROTOCOL_ERROR.
+const HTTP_ONLY_STREAM_HOSTS = ["a1rj.streams.com.br"];
+
+// Normaliza a URL de streaming: para hosts na lista acima, força http no lugar
+// de https. Não afeta as demais estações, que continuam usando https normalmente.
+function normalizeStreamUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (
+      parsed.protocol === "https:" &&
+      HTTP_ONLY_STREAM_HOSTS.some(
+        (h) => host === h || host.endsWith("." + h),
+      )
+    ) {
+      parsed.protocol = "http:";
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 interface RadioPlayerProps {
   station: {
     name: string;
@@ -23,7 +47,7 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
     if (!audio) return;
 
     if (isPlaying && station) {
-      audio.src = station.url;
+      audio.src = normalizeStreamUrl(station.url);
       audio.volume = volume / 100;
       audio.play().catch(() => {
         console.error("Erro ao reproduzir rádio");
