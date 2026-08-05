@@ -39,7 +39,7 @@ const COUNTRIES = [
 
 // Estados brasileiros mais comuns (busca por estado na Radio-Browser).
 const STATES = [
-  { code: "", name: "Todos os estados" },
+  { code: "all", name: "Todos os estados" },
   { code: "Rio de Janeiro", name: "Rio de Janeiro" },
   { code: "São Paulo", name: "São Paulo" },
   { code: "Minas Gerais", name: "Minas Gerais" },
@@ -112,7 +112,7 @@ export default function Home() {
     }
     setSelectedState(state);
     setSearchQuery("");
-    fetchStations(selectedCountry, "", state);
+    fetchStations(selectedCountry, "", state === "all" ? "" : state);
   };
 
   // Handle search (debounced to avoid a request per keystroke)
@@ -125,7 +125,11 @@ export default function Home() {
     }
 
     searchTimer.current = setTimeout(() => {
-      fetchStations(selectedCountry, query, selectedState);
+      fetchStations(
+        selectedCountry,
+        query,
+        selectedState === "all" ? "" : selectedState,
+      );
     }, 400);
   }, [selectedCountry, selectedState]);
 
