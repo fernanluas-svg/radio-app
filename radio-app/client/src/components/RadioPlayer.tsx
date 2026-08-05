@@ -26,6 +26,31 @@ function normalizeStreamUrl(url: string): string {
   }
 }
 
+// Provedores que SÓ servem via HTTPS. Para esses, nunca converter para HTTP,
+// mesmo que o stream falhe (senão gera ERR_CONNECTION_REFUSED na porta 80).
+const HTTPS_ONLY_STREAM_HOSTS = ["streamtheworld.com"];
+
+// Troca o protocolo de uma URL de https para http (sem tocar no resto).
+// Retorna null quando a URL não pode ou não deve ser convertida.
+function toHttp(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return null;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      HTTPS_ONLY_STREAM_HOSTS.some(
+        (h) => host === h || host.endsWith("." + h),
+      )
+    ) {
+      return null;
+    }
+    parsed.protocol = "http:";
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 interface RadioPlayerProps {
   station: {
     name: string;
@@ -41,12 +66,14 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
   const [hasError, setHasError] = useState(false);
   const [volume, setVolume] = useState(70);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const retriedHttpRef = useRef(false);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     if (isPlaying && station) {
+      retriedHttpRef.current = false;
       audio.src = normalizeStreamUrl(station.url);
       audio.volume = volume / 100;
       audio.play().catch(() => {
@@ -67,6 +94,21 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
   }, [volume]);
 
   const handleError = () => {
+    const audio = audioRef.current;
+    if (audio && station && !retriedHttpRef.current) {
+      const fallback = toHttp(audio.src);
+      if (fallback) {
+        retriedHttpRef.current = true;
+        audio.src = fallback;
+        audio.load();
+        audio.play().catch(() => {
+          console.error("Falha ao reproduzir stream de áudio");
+          setHasError(true);
+          setIsPlaying(false);
+        });
+        return;
+      }
+    }
     console.error("Falha ao reproduzir stream de áudio");
     setHasError(true);
     setIsPlaying(false);
