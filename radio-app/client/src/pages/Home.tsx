@@ -4,6 +4,11 @@ import Header from "@/components/Header";
 import StationCard from "@/components/StationCard";
 import RadioPlayer from "@/components/RadioPlayer";
 import RJSection from "@/components/RJSection";
+import {
+  searchStations,
+  toStationCard,
+  type RadioStationCard,
+} from "@/lib/radioApi";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,10 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Station {
-  id: string;
-  name: string;
-  url: string;
+interface Station extends RadioStationCard {
   country: string;
   favicon?: string;
   tags?: string;
@@ -35,35 +37,46 @@ const COUNTRIES = [
   { code: "JP", name: "Japão" },
 ];
 
+// Estados brasileiros mais comuns (busca por estado na Radio-Browser).
+const STATES = [
+  { code: "", name: "Todos os estados" },
+  { code: "Rio de Janeiro", name: "Rio de Janeiro" },
+  { code: "São Paulo", name: "São Paulo" },
+  { code: "Minas Gerais", name: "Minas Gerais" },
+  { code: "Bahia", name: "Bahia" },
+  { code: "Rio Grande do Sul", name: "Rio Grande do Sul" },
+  { code: "Paraná", name: "Paraná" },
+  { code: "Pernambuco", name: "Pernambuco" },
+  { code: "Ceará", name: "Ceará" },
+];
+
 export default function Home() {
   const [stations, setStations] = useState<Station[]>([]);
   const [filteredStations, setFilteredStations] = useState<Station[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("BR");
+    const [selectedCountry, setSelectedCountry] = useState("BR");
+  const [selectedState, setSelectedState] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStation, setCurrentStation] = useState<Station | null>(null);
 
-  // Fetch stations from Radio Browser API (proxied via our server)
-  const fetchStations = async (country: string, query: string = "") => {
+  // Busca estações direto na Radio-Browser API (com fallback de proxy CORS).
+  const fetchStations = async (country: string, query: string = "", state: string = "") => {
     setIsLoading(true);
     setError(null);
     try {
-      let url = `/api/stations/search?countrycode=${encodeURIComponent(country)}`;
-
-      if (query) {
-        url += `&name=${encodeURIComponent(query)}`;
-      }
-
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Erro ao buscar estações");
-
-      const data = await response.json();
-      setStations(data.stations);
-      setFilteredStations(data.stations);
+      const apiStations = await searchStations({
+        countryCode: country,
+        name: query || undefined,
+        state: state || undefined,
+      });
+      const list = apiStations.map(toStationCard);
+      console.log(`[Home] ${list.length} estações carregadas (${country}${state ? " / " + state : ""})`);
+      setStations(list);
+      setFilteredStations(list);
     } catch (err) {
+      console.error("[Home] Erro ao buscar estações:", err);
       setError("Erro ao carregar estações. Tente novamente.");
-      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -86,8 +99,20 @@ export default function Home() {
       searchTimer.current = null;
     }
     setSelectedCountry(country);
+    setSelectedState("");
     setSearchQuery("");
     fetchStations(country);
+  };
+
+  // Handle state change (estados brasileiros)
+  const handleStateChange = (state: string) => {
+    if (searchTimer.current) {
+      clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    }
+    setSelectedState(state);
+    setSearchQuery("");
+    fetchStations(selectedCountry, "", state);
   };
 
   // Handle search (debounced to avoid a request per keystroke)
@@ -100,9 +125,9 @@ export default function Home() {
     }
 
     searchTimer.current = setTimeout(() => {
-      fetchStations(selectedCountry, query);
+      fetchStations(selectedCountry, query, selectedState);
     }, 400);
-  }, [selectedCountry]);
+  }, [selectedCountry, selectedState]);
 
   const handleStationPlay = (station: Station) => {
     setCurrentStation(station);
@@ -147,7 +172,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* RJ Stations - via internal API */}
+      {/* RJ Stations - lista curada local */}
       <RJSection onPlay={handleStationPlay} />
 
       {/* Filters */}
@@ -168,6 +193,26 @@ export default function Home() {
               ))}
             </SelectContent>
           </Select>
+
+          {selectedCountry === "BR" && (
+            <>
+              <label className="text-sm font-sans font-medium text-card-foreground">
+                Estado:
+              </label>
+              <Select value={selectedState} onValueChange={handleStateChange}>
+                <SelectTrigger className="w-full md:w-56">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATES.map((state) => (
+                    <SelectItem key={state.code || "all"} value={state.code}>
+                      {state.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          )}
         </div>
       </section>
 
