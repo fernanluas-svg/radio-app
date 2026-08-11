@@ -1,5 +1,11 @@
-import { Home, Moon, Music, Sun } from "lucide-react";
+import { Home, Moon, Music, MoreVertical, Star, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface HeaderProps {
   favoritesActive?: boolean;
@@ -25,10 +31,10 @@ export default function Header({
             className="w-10 h-10 md:w-12 md:h-12"
           />
           <div className="flex flex-col">
-            <h1 className="text-xl md:text-2xl font-brand">
-              WaveFM
-            </h1>
-            <p className="text-xs md:text-sm text-muted-foreground font-sans">Sintonize o que você gosta!</p>
+            <h1 className="text-xl md:text-2xl font-brand">WaveFM</h1>
+            <p className="text-xs md:text-sm text-muted-foreground font-sans">
+              Sintonize o que você gosta!
+            </p>
           </div>
         </div>
 
@@ -44,7 +50,10 @@ export default function Header({
           >
             Favoritos
           </button>
-          <a href="#" className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors">
+          <a
+            href="#"
+            className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors"
+          >
             Histórico
           </a>
         </nav>
@@ -77,6 +86,41 @@ export default function Header({
               )}
             </button>
           )}
+          {/* Mobile-only overflow menu with Favoritos & Histórico */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+                aria-label="Mais opções"
+                title="Mais opções"
+              >
+                <MoreVertical className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={onFavoritesClick}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Star
+                  className={`w-4 h-4 ${
+                    favoritesActive
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "fill-transparent"
+                  }`}
+                />
+                Favoritos
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => {
+                  console.log("[Header] Histórico clicado");
+                }}
+              >
+                Histórico
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             className="p-2 hover:bg-muted rounded-lg transition-colors"
             aria-label="Configurações"
