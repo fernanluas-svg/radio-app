@@ -1,5 +1,6 @@
 import { Home, Moon, Music, MoreVertical, Star, Sun } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useLocation } from "wouter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ export default function Header({
   onHomeClick,
 }: HeaderProps) {
   const { theme, toggleTheme, switchable } = useTheme();
+  const [, navigate] = useLocation();
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border shadow-sm">
@@ -50,12 +52,12 @@ export default function Header({
           >
             Favoritos
           </button>
-          <a
-            href="#"
+          <button
+            onClick={() => navigate("/historico")}
             className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors"
           >
             Histórico
-          </a>
+          </button>
         </nav>
 
         {/* Day/Night theme toggle + navigation + settings placeholder */}
@@ -113,9 +115,7 @@ export default function Header({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-2 cursor-pointer"
-                onClick={() => {
-                  console.log("[Header] Histórico clicado");
-                }}
+                onClick={() => navigate("/historico")}
               >
                 Histórico
               </DropdownMenuItem>

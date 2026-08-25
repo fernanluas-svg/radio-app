@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import { Loader2, AlertCircle, Star } from "lucide-react";
 import Header from "@/components/Header";
 import StationCard from "@/components/StationCard";
-import RadioPlayer from "@/components/RadioPlayer";
 import RJSection from "@/components/RJSection";
 import { useFavorites } from "@/hooks/useFavorites";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { RJ_STATIONS, type RJStation } from "@shared/rjStations";
 import {
   searchStations,
@@ -68,9 +68,9 @@ export default function Home() {
   const [selectedState, setSelectedState] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentStation, setCurrentStation] = useState<Station | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
+  const { play } = usePlayer();
 
   // Lista unificada (RJ + busca) para a visão de favoritos, deduplicada por id.
   const visibleStations = showOnlyFavorites
@@ -123,7 +123,7 @@ export default function Home() {
   };
 
   const handleStationPlay = (station: Station) => {
-    setCurrentStation(station);
+    play(station);
   };
 
   return (
@@ -259,14 +259,6 @@ export default function Home() {
           </div>
         )}
       </section>
-
-      {/* Radio Player */}
-      {currentStation && (
-        <RadioPlayer
-          station={currentStation}
-          onClose={() => setCurrentStation(null)}
-        />
-      )}
     </div>
   );
 }
