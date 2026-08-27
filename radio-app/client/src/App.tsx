@@ -8,6 +8,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { PlayerProvider, usePlayer } from "./contexts/PlayerContext";
 import Home from "./pages/Home";
 import History from "./pages/History";
+import Explore from "./pages/Explore";
 
 // Player persistente entre rotas: continua tocando ao navegar.
 function PlayerRoot() {
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/historico"} component={History} />
+      <Route path={"/explorar"} component={Explore} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

@@ -53,6 +53,12 @@ export default function Header({
             Favoritos
           </button>
           <button
+            onClick={() => navigate("/explorar")}
+            className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors"
+          >
+            Explorar
+          </button>
+          <button
             onClick={() => navigate("/historico")}
             className="text-muted-foreground hover:text-primary font-sans text-sm transition-colors"
           >
@@ -112,6 +118,12 @@ export default function Header({
                   }`}
                 />
                 Favoritos
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2 cursor-pointer"
+                onClick={() => navigate("/explorar")}
+              >
+                Explorar
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-2 cursor-pointer"
