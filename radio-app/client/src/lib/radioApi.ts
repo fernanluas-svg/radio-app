@@ -127,3 +127,32 @@ export function toStationCard(s: RadioBrowserStation): RadioStationCard {
     tags: s.tags,
   };
 }
+
+// ----- Catálogo de países e estações por país (tela Explorar) -----
+
+export interface RadioBrowserCountry {
+  name: string;
+  stationcount: number;
+  iso_3166_1?: string;
+}
+
+// Lista de países com a quantidade de rádios (usada para exibir o catálogo).
+export async function fetchCountries(): Promise<RadioBrowserCountry[]> {
+  const url = `${RADIO_BROWSER_BASE}/json/countries`;
+  return (await requestJson(url)) as unknown as RadioBrowserCountry[];
+}
+
+// Estações de um país específico, via ISO 3166-1 alpha-2
+// (/json/stations/bycountrycodeexact/<ISO>). O código é mais estável que o
+// nome exibido (ex.: "Turkey" virou "Türkiye", "United States" é
+// "The United States Of America"), evitando cards vazios.
+export async function fetchStationsByCountryCode(
+  countryCode: string,
+  limit = 80,
+): Promise<RadioStationCard[]> {
+  const url = `${RADIO_BROWSER_BASE}/json/stations/bycountrycodeexact/${encodeURIComponent(
+    countryCode,
+  )}?hidebroken=true&order=votes&reverse=true&limit=${limit}`;
+  const data = (await requestJson(url)) as RadioBrowserStation[];
+  return data.map(toStationCard);
+}
