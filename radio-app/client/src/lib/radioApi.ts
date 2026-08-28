@@ -156,3 +156,18 @@ export async function fetchStationsByCountryCode(
   const data = (await requestJson(url)) as RadioBrowserStation[];
   return data.map(toStationCard);
 }
+
+// Estações de um estado brasileiro, via busca por estado (countrycode=BR +
+// state=<nome>). Mesmo método usado na Home para o selecionador de regiões.
+export async function fetchStationsByState(
+  stateName: string,
+  limit = 80,
+): Promise<RadioStationCard[]> {
+  const data = await searchStations({
+    countryCode: "BR",
+    state: stateName,
+    limit,
+  });
+  return data.map(toStationCard);
+}
+

@@ -7,6 +7,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useLocation } from "wouter";
 import {
   fetchStationsByCountryCode,
+  fetchStationsByState,
   fetchCountries,
   type RadioStationCard,
   type RadioBrowserCountry,
@@ -17,6 +18,11 @@ type Station = RadioStationCard;
 interface CountryDef {
   code: string; // ISO 3166-1 alpha-2 (bandeira + busca na API)
   name: string; // nome em pt-BR
+}
+
+interface StateDef {
+  uf: string; // sigla (ex.: RJ)
+  name: string; // nome completo
 }
 
 // Países principais/populares do catálogo.
@@ -53,6 +59,37 @@ const POPULAR_COUNTRIES: CountryDef[] = [
   { code: "TR", name: "Turquia" },
 ];
 
+// Estados brasileiros (catálogo ao clicar no Brasil).
+const BR_STATES: StateDef[] = [
+  { uf: "AC", name: "Acre" },
+  { uf: "AL", name: "Alagoas" },
+  { uf: "AP", name: "Amapá" },
+  { uf: "AM", name: "Amazonas" },
+  { uf: "BA", name: "Bahia" },
+  { uf: "CE", name: "Ceará" },
+  { uf: "DF", name: "Distrito Federal" },
+  { uf: "ES", name: "Espírito Santo" },
+  { uf: "GO", name: "Goiás" },
+  { uf: "MA", name: "Maranhão" },
+  { uf: "MT", name: "Mato Grosso" },
+  { uf: "MS", name: "Mato Grosso do Sul" },
+  { uf: "MG", name: "Minas Gerais" },
+  { uf: "PA", name: "Pará" },
+  { uf: "PB", name: "Paraíba" },
+  { uf: "PR", name: "Paraná" },
+  { uf: "PE", name: "Pernambuco" },
+  { uf: "PI", name: "Piauí" },
+  { uf: "RJ", name: "Rio de Janeiro" },
+  { uf: "RN", name: "Rio Grande do Norte" },
+  { uf: "RS", name: "Rio Grande do Sul" },
+  { uf: "RO", name: "Rondônia" },
+  { uf: "RR", name: "Roraima" },
+  { uf: "SC", name: "Santa Catarina" },
+  { uf: "SP", name: "São Paulo" },
+  { uf: "SE", name: "Sergipe" },
+  { uf: "TO", name: "Tocantins" },
+];
+
 function flagEmoji(code: string): string {
   return code
     .toUpperCase()
@@ -60,12 +97,14 @@ function flagEmoji(code: string): string {
 }
 
 export default function Explore() {
-  const [view, setView] = useState<"catalog" | "stations">("catalog");
+  const [view, setView] = useState<"catalog" | "states" | "stations">("catalog");
   const [selected, setSelected] = useState<CountryDef | null>(null);
+  const [selectedState, setSelectedState] = useState<StateDef | null>(null);
   const [countryQuery, setCountryQuery] = useState("");
+  const [stateQuery, setStateQuery] = useState("");
   const [stationQuery, setStationQuery] = useState("");
 
-  const [countries, setCountries] = useState<Station[]>([]);
+  const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
@@ -90,15 +129,12 @@ export default function Explore() {
       });
   }, []);
 
-  const openCountry = (c: CountryDef) => {
-    setSelected(c);
-    setStationQuery("");
-    setView("stations");
+  const loadCountryStations = (code: string) => {
     setIsLoading(true);
     setError(null);
-    setCountries([]);
-    fetchStationsByCountryCode(c.code, 80)
-      .then((list) => setCountries(list))
+    setStations([]);
+    fetchStationsByCountryCode(code, 80)
+      .then((list) => setStations(list))
       .catch((err) => {
         console.error("[Explore] erro ao buscar país:", err);
         setError("Erro ao carregar estações. Tente novamente.");
@@ -106,29 +142,80 @@ export default function Explore() {
       .finally(() => setIsLoading(false));
   };
 
+  const loadStateStations = (stateName: string) => {
+    setIsLoading(true);
+    setError(null);
+    setStations([]);
+    fetchStationsByState(stateName, 80)
+      .then((list) => setStations(list))
+      .catch((err) => {
+        console.error("[Explore] erro ao buscar estado:", err);
+        setError("Erro ao carregar estações. Tente novamente.");
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const openCountry = (c: CountryDef) => {
+    if (c.code === "BR") {
+      setSelected(c);
+      setSelectedState(null);
+      setView("states");
+      return;
+    }
+    setSelected(c);
+    setSelectedState(null);
+    setView("stations");
+    loadCountryStations(c.code);
+  };
+
+  const openState = (st: StateDef) => {
+    setSelectedState(st);
+    setStateQuery("");
+    setView("stations");
+    loadStateStations(st.name);
+  };
+
   const goBack = () => {
-    setView("catalog");
-    setSelected(null);
-    setCountries([]);
-    setStationQuery("");
+    if (view === "states") {
+      setView("catalog");
+      setSelected(null);
+      setSelectedState(null);
+      return;
+    }
+    // view === "stations"
+    if (selectedState) {
+      setView("states");
+      setSelectedState(null);
+      setStations([]);
+    } else {
+      setView("catalog");
+      setSelected(null);
+      setStations([]);
+    }
   };
 
   const filteredCountries = POPULAR_COUNTRIES.filter((c) =>
     c.name.toLowerCase().includes(countryQuery.trim().toLowerCase()),
   );
 
+  const filteredStates = BR_STATES.filter((s) =>
+    s.name.toLowerCase().includes(stateQuery.trim().toLowerCase()),
+  );
+
   const visibleStations = stationQuery
-    ? countries.filter((s) =>
-        s.name.toLowerCase().includes(stationQuery.toLowerCase()),
-      )
-    : countries;
+    ? stations.filter((s) => s.name.toLowerCase().includes(stationQuery.toLowerCase()))
+    : stations;
+
+  const backLabel =
+    view === "states"
+      ? "Voltar para Países"
+      : selectedState
+        ? "Voltar para Estados"
+        : "Voltar para Países";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <Header
-        onHomeClick={() => navigate("/")}
-        onFavoritesClick={() => navigate("/")}
-      />
+      <Header onHomeClick={() => navigate("/")} onFavoritesClick={() => navigate("/")} />
 
       {/* Hero */}
       <section className="relative overflow-hidden py-8 md:py-12">
@@ -194,7 +281,7 @@ export default function Explore() {
                         {c.name}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {count != null ? `${count} rádios` : " "}
+                        {count != null ? `${count} rádios` : " "}
                       </span>
                     </button>
                   );
@@ -203,9 +290,9 @@ export default function Explore() {
             )}
           </section>
         </>
-      ) : (
+      ) : view === "states" ? (
         <>
-          {/* Barra de volta + título */}
+          {/* Barra de volta + título dos estados */}
           <section className="container pt-6 md:pt-8">
             <button
               onClick={goBack}
@@ -217,8 +304,77 @@ export default function Explore() {
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4">
               <h2 className="text-2xl md:text-3xl font-display font-bold text-card-foreground flex items-center gap-3">
-                <span className="text-3xl">{selected && flagEmoji(selected.code)}</span>
-                {selected?.name}
+                <span className="text-3xl">{flagEmoji("BR")}</span>
+                Brasil — escolha um estado
+              </h2>
+
+              <div className="relative w-full md:max-w-xs">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Buscar estado..."
+                  value={stateQuery}
+                  onChange={(e) => setStateQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-2.5 text-sm rounded-xl border-2 border-border bg-card text-card-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Grid de estados */}
+          <section className="container py-8 md:py-12 pb-32 md:pb-12">
+            {filteredStates.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-sans text-center">
+                  Nenhum estado encontrado para "{stateQuery}".
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filteredStates.map((s) => (
+                  <button
+                    key={s.uf}
+                    onClick={() => openState(s)}
+                    className="group flex flex-col items-center gap-2 rounded-2xl bg-card border border-border p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary hover:shadow-[0_8px_30px_rgba(168,85,247,0.25)]"
+                  >
+                    <span className="flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary font-display font-bold text-xl transition-transform duration-300 group-hover:scale-110">
+                      {s.uf}
+                    </span>
+                    <span className="font-display font-semibold text-card-foreground text-center">
+                      {s.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      ) : (
+        <>
+          {/* Barra de volta + título das estações */}
+          <section className="container pt-6 md:pt-8">
+            <button
+              onClick={goBack}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-border bg-card text-card-foreground font-sans text-sm font-medium hover:border-primary hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              {backLabel}
+            </button>
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mt-4">
+              <h2 className="text-2xl md:text-3xl font-display font-bold text-card-foreground flex items-center gap-3">
+                {selectedState ? (
+                  <>
+                    <span className="text-3xl">{flagEmoji("BR")}</span>
+                    {selectedState.name}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-3xl">{selected && flagEmoji(selected.code)}</span>
+                    {selected?.name}
+                  </>
+                )}
               </h2>
 
               <div className="relative w-full md:max-w-xs">
@@ -246,9 +402,7 @@ export default function Explore() {
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                <p className="text-muted-foreground font-sans">
-                  Carregando estações...
-                </p>
+                <p className="text-muted-foreground font-sans">Carregando estações...</p>
               </div>
             ) : visibleStations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
@@ -256,7 +410,9 @@ export default function Explore() {
                 <p className="text-muted-foreground font-sans text-center">
                   {stationQuery
                     ? `Nenhuma rádio encontrada para "${stationQuery}".`
-                    : "Nenhuma rádio disponível para este país."}
+                    : selectedState
+                      ? `Nenhuma rádio disponível para ${selectedState.name}.`
+                      : "Nenhuma rádio disponível para este país."}
                 </p>
               </div>
             ) : (
