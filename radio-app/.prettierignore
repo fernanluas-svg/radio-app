@@ -3,3 +3,12 @@ node_modules
 .git
 *.min.js
 *.min.css
+
+# Generated lockfiles and scaffolding snapshots
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+template.json
+
+# Vendor/debug artifacts
+client/public/__manus__/debug-collector.js

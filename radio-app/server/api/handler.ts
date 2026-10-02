@@ -15,7 +15,11 @@ export function sendJson(res: ServerResponse, status: number, data: unknown) {
   res.end(body);
 }
 
-export function sendError(res: ServerResponse, status: number, message: string) {
+export function sendError(
+  res: ServerResponse,
+  status: number,
+  message: string,
+) {
   sendJson(res, status, { error: message });
 }
 

@@ -278,7 +278,7 @@ export default function RadioPlayer({
           "overflow-hidden transition-[max-height,opacity] duration-300 ease-out",
           collapsible && !expanded
             ? "max-h-0 opacity-0"
-            : "max-h-[26rem] opacity-100"
+            : "max-h-[26rem] opacity-100",
         )}
       >
         {/* Controles — inertes enquanto recolhido para não receber foco/teclado */}

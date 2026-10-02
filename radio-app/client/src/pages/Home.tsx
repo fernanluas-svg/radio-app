@@ -82,7 +82,11 @@ export default function Home() {
     : filteredStations;
 
   // Busca estações direto na Radio-Browser API (com fallback de proxy CORS).
-  const fetchStations = async (country: string, query: string = "", state: string = "") => {
+  const fetchStations = async (
+    country: string,
+    query: string = "",
+    state: string = "",
+  ) => {
     setIsLoading(true);
     setError(null);
     try {
@@ -92,7 +96,9 @@ export default function Home() {
         state: state || undefined,
       });
       const list = apiStations.map(toStationCard);
-      console.log(`[Home] ${list.length} estações carregadas (${country}${state ? " / " + state : ""})`);
+      console.log(
+        `[Home] ${list.length} estações carregadas (${country}${state ? " / " + state : ""})`,
+      );
       setStations(list);
       setFilteredStations(list);
     } catch (err) {
@@ -135,9 +141,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
       <Header
         favoritesActive={showOnlyFavorites}
-        onFavoritesClick={() =>
-          setShowOnlyFavorites((f) => !f)
-        }
+        onFavoritesClick={() => setShowOnlyFavorites((f) => !f)}
         onHomeClick={() => setShowOnlyFavorites(false)}
       />
 
@@ -226,7 +230,9 @@ export default function Home() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground font-sans">Carregando estações...</p>
+            <p className="text-muted-foreground font-sans">
+              Carregando estações...
+            </p>
           </div>
         ) : visibleStations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">

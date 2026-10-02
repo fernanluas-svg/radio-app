@@ -27,7 +27,8 @@ const RADIO_BROWSER_BASE = "https://de1.api.radio-browser.info";
 
 // Proxies CORS públicos usados como fallback quando a chamada direta falha.
 const CORS_PROXIES = [
-  (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) =>
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
 ];
 
@@ -170,4 +171,3 @@ export async function fetchStationsByState(
   });
   return data.map(toStationCard);
 }
-

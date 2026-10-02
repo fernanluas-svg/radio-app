@@ -12,7 +12,10 @@ export default function History() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <Header onHomeClick={() => navigate("/")} onFavoritesClick={() => navigate("/")} />
+      <Header
+        onHomeClick={() => navigate("/")}
+        onFavoritesClick={() => navigate("/")}
+      />
 
       <section className="container py-8 md:py-12 pb-72 md:pb-12">
         <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">

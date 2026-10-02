@@ -97,7 +97,9 @@ function flagEmoji(code: string): string {
 }
 
 export default function Explore() {
-  const [view, setView] = useState<"catalog" | "states" | "stations">("catalog");
+  const [view, setView] = useState<"catalog" | "states" | "stations">(
+    "catalog",
+  );
   const [selected, setSelected] = useState<CountryDef | null>(null);
   const [selectedState, setSelectedState] = useState<StateDef | null>(null);
   const [countryQuery, setCountryQuery] = useState("");
@@ -203,7 +205,9 @@ export default function Explore() {
   );
 
   const visibleStations = stationQuery
-    ? stations.filter((s) => s.name.toLowerCase().includes(stationQuery.toLowerCase()))
+    ? stations.filter((s) =>
+        s.name.toLowerCase().includes(stationQuery.toLowerCase()),
+      )
     : stations;
 
   const backLabel =
@@ -215,7 +219,10 @@ export default function Explore() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
-      <Header onHomeClick={() => navigate("/")} onFavoritesClick={() => navigate("/")} />
+      <Header
+        onHomeClick={() => navigate("/")}
+        onFavoritesClick={() => navigate("/")}
+      />
 
       {/* Hero */}
       <section className="relative overflow-hidden py-8 md:py-12">
@@ -371,7 +378,9 @@ export default function Explore() {
                   </>
                 ) : (
                   <>
-                    <span className="text-3xl">{selected && flagEmoji(selected.code)}</span>
+                    <span className="text-3xl">
+                      {selected && flagEmoji(selected.code)}
+                    </span>
                     {selected?.name}
                   </>
                 )}
@@ -402,7 +411,9 @@ export default function Explore() {
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-                <p className="text-muted-foreground font-sans">Carregando estações...</p>
+                <p className="text-muted-foreground font-sans">
+                  Carregando estações...
+                </p>
               </div>
             ) : visibleStations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">

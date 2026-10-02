@@ -29,7 +29,11 @@ export const searchStationsHandler: ApiHandler = async (req, res) => {
       headers: { "User-Agent": "WaveFM/1.0" },
     });
     if (!resp.ok) {
-      return sendError(res, resp.status, "Erro ao buscar estações no radio-browser");
+      return sendError(
+        res,
+        resp.status,
+        "Erro ao buscar estações no radio-browser",
+      );
     }
 
     const data = await resp.json();

@@ -88,8 +88,7 @@ export const RJ_STATIONS: RJStation[] = [
     genre: "Samba & Pagode",
     city: "MacaÃ©",
     url: "https://wz7.servidoresbrasil.com:8274/stream",
-    favicon:
-      "https://img.radios.com.br/radio/lg/radio229211_1706128532.jpeg",
+    favicon: "https://img.radios.com.br/radio/lg/radio229211_1706128532.jpeg",
   },
   {
     id: "hitmix-brasil",
@@ -258,8 +257,7 @@ export const RJ_STATIONS: RJStation[] = [
     genre: "Jornalismo & Esportes",
     city: "Rio de Janeiro",
     url: "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_GLOBO_RJAAC.aac",
-    favicon:
-      "https://img.radios.com.br/radio/lg/radio8817_1676300226.png",
+    favicon: "https://img.radios.com.br/radio/lg/radio8817_1676300226.png",
   },
   {
     id: "radio-graviola",

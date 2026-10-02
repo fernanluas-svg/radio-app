@@ -66,7 +66,7 @@ function loadHistory(): Station[] {
         s &&
         typeof s.id === "string" &&
         typeof s.name === "string" &&
-        typeof s.url === "string"
+        typeof s.url === "string",
     );
   } catch {
     return [];
@@ -96,8 +96,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setHistory((prev) =>
       [station, ...prev.filter((s) => s.url !== station.url)].slice(
         0,
-        MAX_HISTORY
-      )
+        MAX_HISTORY,
+      ),
     );
   }, []);
 
@@ -115,12 +115,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setNav((prev) =>
         prev.index === index && prev.queue[index] === queue[index]
           ? prev
-          : { queue, index }
+          : { queue, index },
       );
       setIsPlaying(true);
       pushHistory(queue[index]);
     },
-    [pushHistory]
+    [pushHistory],
   );
 
   const togglePlay = useCallback(() => setIsPlaying((v) => !v), []);
@@ -136,7 +136,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setNav({ queue: nav.queue, index });
       pushHistory(nav.queue[index]);
     },
-    [nav, pushHistory]
+    [nav, pushHistory],
   );
 
   const close = useCallback(() => {
@@ -178,7 +178,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       step,
       close,
       clearHistory,
-    ]
+    ],
   );
 
   return (

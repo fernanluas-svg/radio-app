@@ -163,7 +163,10 @@ function vitePluginStorageProxy(): Plugin {
           return;
         }
 
-        const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
+        const forgeBaseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(
+          /\/+$/,
+          "",
+        );
         const forgeKey = process.env.BUILT_IN_FORGE_API_KEY;
 
         if (!forgeBaseUrl || !forgeKey) {
@@ -173,7 +176,10 @@ function vitePluginStorageProxy(): Plugin {
         }
 
         try {
-          const forgeUrl = new URL("v1/storage/presign/get", forgeBaseUrl + "/");
+          const forgeUrl = new URL(
+            "v1/storage/presign/get",
+            forgeBaseUrl + "/",
+          );
           forgeUrl.searchParams.set("path", key);
 
           const forgeResp = await fetch(forgeUrl, {
@@ -214,7 +220,9 @@ function vitePluginApiDev(): Plugin {
     configureServer(server: ViteDevServer) {
       server.middlewares.use("/api", (req, res, next) => {
         apiRouter(req, res, () => {
-          res.writeHead(404, { "Content-Type": "application/json; charset=utf-8" });
+          res.writeHead(404, {
+            "Content-Type": "application/json; charset=utf-8",
+          });
           res.end(JSON.stringify({ error: "Not found" }));
         });
       });
@@ -222,7 +230,15 @@ function vitePluginApiDev(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector(), vitePluginStorageProxy(), vitePluginApiDev()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  vitePluginManusDebugCollector(),
+  vitePluginStorageProxy(),
+  vitePluginApiDev(),
+];
 
 export default defineConfig({
   plugins,
