@@ -104,7 +104,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const playFrom = useCallback(
     (queue: Station[], stationId: string) => {
       const index = queue.findIndex((s) => s.id === stationId);
-      if (index < 0) return;
+      if (index < 0) {
+        // Fila e estação costumam vir de telas diferentes. Sem este aviso, a
+        // falha é 100% silenciosa e parece "o player não funciona".
+        console.warn("[PlayerContext] estação ausente na fila:", stationId);
+        return;
+      }
       // Re-tocar no mesmo card não recria a fila: mantém a referência da estação
       // para o player não reiniciar o stream do zero.
       setNav((prev) =>

@@ -167,7 +167,7 @@ export default function Home() {
       {/* RJ Stations - lista curada local (oculta na visão de favoritos) */}
       {!showOnlyFavorites && (
         <RJSection
-          onPlay={handleStationPlay}
+          onPlay={handleRjPlay}
           favorites={favorites}
           onToggleFavorite={toggleFavorite}
         />
@@ -256,7 +256,7 @@ export default function Home() {
                 country={station.country}
                 favicon={station.favicon}
                 url={station.url}
-onPlay={handleRjPlay}
+                onPlay={handleStationPlay}
                 isFavorite={favorites.has(station.id)}
                 onToggleFavorite={toggleFavorite}
               />
