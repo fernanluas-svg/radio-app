@@ -109,7 +109,7 @@ export default function Explore() {
   const [error, setError] = useState<string | null>(null);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
 
-  const { play } = usePlayer();
+  const { playFrom } = usePlayer();
   const { favorites, toggleFavorite } = useFavorites();
   const [, navigate] = useLocation();
 
@@ -256,7 +256,7 @@ export default function Explore() {
           </section>
 
           {/* Grid de países */}
-          <section className="container py-8 md:py-12 pb-32 md:pb-12">
+          <section className="container py-8 md:py-12 pb-72 md:pb-12">
             {filteredCountries.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
@@ -322,7 +322,7 @@ export default function Explore() {
           </section>
 
           {/* Grid de estados */}
-          <section className="container py-8 md:py-12 pb-32 md:pb-12">
+          <section className="container py-8 md:py-12 pb-72 md:pb-12">
             {filteredStates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <AlertCircle className="w-10 h-10 text-muted-foreground mb-4" />
@@ -391,7 +391,7 @@ export default function Explore() {
           </section>
 
           {/* Grid de estações */}
-          <section className="container py-8 md:py-12 pb-32 md:pb-12">
+          <section className="container py-8 md:py-12 pb-72 md:pb-12">
             {error && (
               <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
                 <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -425,7 +425,7 @@ export default function Explore() {
                     country={station.country}
                     favicon={station.favicon}
                     url={station.url}
-                    onPlay={play}
+                    onPlay={(station) => playFrom(visibleStations, station.id)}
                     isFavorite={favorites.has(station.id)}
                     onToggleFavorite={toggleFavorite}
                   />

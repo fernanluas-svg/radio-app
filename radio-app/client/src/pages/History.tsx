@@ -6,7 +6,7 @@ import { useFavorites } from "@/hooks/useFavorites";
 import { useLocation } from "wouter";
 
 export default function History() {
-  const { history, play, clearHistory } = usePlayer();
+  const { history, playFrom, clearHistory } = usePlayer();
   const { favorites, toggleFavorite } = useFavorites();
   const [, navigate] = useLocation();
 
@@ -14,7 +14,7 @@ export default function History() {
     <div className="min-h-screen bg-gradient-to-br from-background via-muted to-background">
       <Header onHomeClick={() => navigate("/")} onFavoritesClick={() => navigate("/")} />
 
-      <section className="container py-8 md:py-12">
+      <section className="container py-8 md:py-12 pb-72 md:pb-12">
         <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <HistoryIcon className="w-7 h-7 text-primary" />
@@ -63,7 +63,7 @@ export default function History() {
                 country={station.country ?? ""}
                 favicon={station.favicon}
                 url={station.url}
-                onPlay={play}
+                onPlay={(station) => playFrom(history, station.id)}
                 isFavorite={favorites.has(station.id)}
                 onToggleFavorite={toggleFavorite}
               />

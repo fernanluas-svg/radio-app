@@ -70,7 +70,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const { favorites, toggleFavorite } = useFavorites();
-  const { play } = usePlayer();
+  const { playFrom } = usePlayer();
 
   // Lista unificada (RJ + busca) para a visão de favoritos, deduplicada por id.
   const visibleStations = showOnlyFavorites
@@ -122,8 +122,13 @@ export default function Home() {
     fetchStations(selectedCountry, "", state === "all" ? "" : state);
   };
 
+  // Cada tela registra a lista visível como fila, para o player navegar entre as rádios.
+  const handleRjPlay = (station: Station) => {
+    playFrom(rjFavoriteCards, station.id);
+  };
+
   const handleStationPlay = (station: Station) => {
-    play(station);
+    playFrom(visibleStations, station.id);
   };
 
   return (
@@ -210,7 +215,7 @@ export default function Home() {
       </section>
 
       {/* Stations Grid */}
-      <section className="container py-8 md:py-12 pb-32 md:pb-12">
+      <section className="container py-8 md:py-12 pb-72 md:pb-12">
         {error && (
           <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg mb-6">
             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -251,7 +256,7 @@ export default function Home() {
                 country={station.country}
                 favicon={station.favicon}
                 url={station.url}
-                onPlay={handleStationPlay}
+onPlay={handleRjPlay}
                 isFavorite={favorites.has(station.id)}
                 onToggleFavorite={toggleFavorite}
               />

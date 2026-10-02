@@ -1,10 +1,22 @@
-import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { motion, useDragControls, type PanInfo } from "framer-motion";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+  Volume2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/useMobile";
 
 // Estações cujo servidor de áudio só aceita HTTP (não suportam TLS/HTTPS).
 // Se o cliente tentar https nesses hosts, o browser lança ERR_SSL_PROTOCOL_ERROR.
-const HTTP_ONLY_STREAM_HOSTS = ["a1rj.streams.com.br", "servidor36.brlogic.com"];
+const HTTP_ONLY_STREAM_HOSTS = [
+  "a1rj.streams.com.br",
+  "servidor36.brlogic.com",
+];
 
 // Normaliza a URL de streaming: para hosts na lista acima, força http no lugar
 // de https. Não afeta as demais estações, que continuam usando https normalmente.
@@ -14,9 +26,7 @@ function normalizeStreamUrl(url: string): string {
     const host = parsed.hostname.toLowerCase();
     if (
       parsed.protocol === "https:" &&
-      HTTP_ONLY_STREAM_HOSTS.some(
-        (h) => host === h || host.endsWith("." + h),
-      )
+      HTTP_ONLY_STREAM_HOSTS.some((h) => host === h || host.endsWith("." + h))
     ) {
       parsed.protocol = "http:";
     }
@@ -38,9 +48,7 @@ function toHttp(url: string): string | null {
     if (parsed.protocol !== "https:") return null;
     const host = parsed.hostname.toLowerCase();
     if (
-      HTTPS_ONLY_STREAM_HOSTS.some(
-        (h) => host === h || host.endsWith("." + h),
-      )
+      HTTPS_ONLY_STREAM_HOSTS.some((h) => host === h || host.endsWith("." + h))
     ) {
       return null;
     }
@@ -51,6 +59,9 @@ function toHttp(url: string): string | null {
   }
 }
 
+// Altura inicial da barra recolhida, usada só até a medição real do DOM.
+const PEEK_HEIGHT_FALLBACK = 96;
+
 interface RadioPlayerProps {
   station: {
     name: string;
@@ -59,14 +70,35 @@ interface RadioPlayerProps {
     country?: string;
   } | null;
   onClose?: () => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
-export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
+export default function RadioPlayer({
+  station,
+  onClose,
+  onPrev,
+  onNext,
+  hasPrev = false,
+  hasNext = false,
+}: RadioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [volume, setVolume] = useState(70);
+  const [expanded, setExpanded] = useState(true);
+  const [peekHeight, setPeekHeight] = useState(PEEK_HEIGHT_FALLBACK);
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const retriedHttpRef = useRef(false);
+  const peekRef = useRef<HTMLDivElement>(null);
+  const didDragRef = useRef(false);
+  const dragControls = useDragControls();
+
+  const isMobile = useIsMobile();
+  // O recolhimento é exclusivo do mobile; no desktop o player segue como card flutuante.
+  const collapsible = Boolean(isMobile && station);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -76,6 +108,9 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
       retriedHttpRef.current = false;
       audio.src = normalizeStreamUrl(station.url);
       audio.volume = volume / 100;
+      // load() aborta o carregamento do stream anterior — evita sobreposição ao
+      // alternar rapidamente entre estações.
+      audio.load();
       audio.play().catch(() => {
         console.error("Erro ao reproduzir rádio");
         setHasError(true);
@@ -92,6 +127,23 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
       audio.volume = volume / 100;
     }
   }, [volume]);
+
+  // Trocar de estação (anterior/próxima) limpa o erro da rádio que falhou.
+  useEffect(() => {
+    setHasError(false);
+  }, [station]);
+
+  // Mede a altura da barra recolhida (handle + identificação + play rápido)
+  // para que o snap do gesto de arrastar caia exatamente no fim do conteúdo.
+  useEffect(() => {
+    const el = peekRef.current;
+    if (!el) return;
+    const measure = () => setPeekHeight(el.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [station]);
 
   const handleError = () => {
     const audio = audioRef.current;
@@ -120,92 +172,201 @@ export default function RadioPlayer({ station, onClose }: RadioPlayerProps) {
     setIsPlaying(!isPlaying);
   };
 
+  const handleDragEnd = (_event: unknown, info: PanInfo) => {
+    if (info.offset.y > 70 || info.velocity.y > 600) {
+      setExpanded(false);
+    } else if (info.offset.y < -50 || info.velocity.y < -500) {
+      setExpanded(true);
+    }
+    // O click do handle dispara depois do pointerup; zeramos a flag no próximo
+    // tick para o gesto não acabar alternando o estado duas vezes.
+    window.setTimeout(() => {
+      didDragRef.current = false;
+    }, 0);
+  };
+
+  const handleDragStart = useCallback(() => {
+    didDragRef.current = true;
+  }, []);
+
+  const toggleExpanded = useCallback(() => {
+    if (!collapsible || didDragRef.current) return;
+    setExpanded((v) => !v);
+  }, [collapsible]);
+
   if (!station) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:bottom-6 md:right-6 md:max-w-sm bg-card border-t md:border md:rounded-xl border-border shadow-2xl z-40">
+    <motion.section
+      drag={collapsible ? "y" : false}
+      dragListener={false}
+      dragControls={dragControls}
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={{ top: 0.02, bottom: 0.45 }}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      initial={false}
+      animate={{ height: collapsible && !expanded ? peekHeight : "auto" }}
+      transition={
+        collapsible
+          ? { type: "spring", stiffness: 420, damping: 38 }
+          : { duration: 0 }
+      }
+      aria-label="Player de rádio"
+      className="fixed bottom-0 left-0 right-0 z-40 overflow-hidden border-t border-border bg-card shadow-2xl md:bottom-6 md:left-auto md:right-6 md:max-w-sm md:rounded-2xl md:border"
+    >
       <audio ref={audioRef} onError={handleError} />
 
-      <div className="p-4 md:p-6">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="font-display font-bold text-card-foreground text-lg truncate">
-              {station.name}
-            </h3>
-            {station.country && (
-              <p className="text-sm text-muted-foreground font-sans">{station.country}</p>
-            )}
-          </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="ml-2 p-1 hover:bg-muted rounded-lg transition-colors"
-              aria-label="Fechar player"
-            >
-              <X className="w-5 h-5 text-muted-foreground" />
-            </button>
-          )}
-        </div>
+      {/* Barra indicadora arrastável */}
+      <button
+        type="button"
+        onPointerDown={(e) => {
+          if (collapsible) dragControls.start(e);
+        }}
+        onClick={toggleExpanded}
+        aria-label={expanded ? "Recolher player" : "Expandir player"}
+        aria-expanded={expanded}
+        className="flex w-full touch-none justify-center pt-3 pb-1.5 md:hidden"
+      >
+        <span className="h-1.5 w-11 rounded-full bg-primary/70 transition-colors hover:bg-primary" />
+      </button>
 
-        {/* Progress bar (placeholder) */}
-        <div className="w-full h-1 bg-muted rounded-full mb-4 overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: isPlaying ? "30%" : "0%" }}
+      {/* Barra sempre visível: identificação + play rápido (recolhido) */}
+      <div
+        ref={peekRef}
+        className="flex items-center gap-3 px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:px-6 md:py-3"
+      >
+        {station.favicon && (
+          <img
+            src={station.favicon}
+            alt=""
+            className="h-11 w-11 shrink-0 rounded-lg object-cover shadow-md"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
           />
-        </div>
+        )}
 
-        {/* Controls */}
-        <div className="flex items-center justify-between">
-          {/* Play/Pause Button */}
+        <button
+          type="button"
+          onClick={toggleExpanded}
+          disabled={!collapsible}
+          className="min-w-0 flex-1 text-left disabled:pointer-events-none"
+        >
+          <p className="truncate font-display text-base font-bold text-card-foreground">
+            {station.name}
+          </p>
+          {station.country && (
+            <p className="truncate font-sans text-xs text-muted-foreground">
+              {station.country}
+            </p>
+          )}
+        </button>
+
+        {/* Com o player recolhido é o único controle de reprodução disponível. */}
+        {collapsible && !expanded && (
+          <Button
+            onClick={handlePlayPause}
+            size="icon"
+            aria-label={isPlaying ? "Pausar" : "Reproduzir"}
+            className="shrink-0 rounded-full bg-primary text-white shadow-md hover:bg-primary/90"
+          >
+            {isPlaying ? (
+              <Pause className="h-5 w-5 fill-current" />
+            ) : (
+              <Play className="h-5 w-5 fill-current" />
+            )}
+          </Button>
+        )}
+
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar player"
+            className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-muted"
+          >
+            <X className="h-5 w-5 text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      {/* Controles — inertes enquanto recolhido para não receber foco/teclado */}
+      <div
+        inert={collapsible && !expanded ? true : undefined}
+        className="space-y-4 px-4 pb-5 md:px-6 md:pb-6"
+      >
+        {/* Controles de mídia: anterior / play / próxima */}
+        <div className="flex items-center justify-center gap-5 md:gap-7">
+          <Button
+            onClick={onPrev}
+            disabled={!hasPrev}
+            size="icon-lg"
+            aria-label="Rádio anterior"
+            title="Rádio anterior"
+            className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </Button>
+
           <Button
             onClick={handlePlayPause}
             size="lg"
-            className="rounded-full w-14 h-14 bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all transform active:scale-95"
             aria-label={isPlaying ? "Pausar" : "Reproduzir"}
+            className="h-16 w-16 rounded-full bg-primary text-white shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
           >
             {isPlaying ? (
-              <Pause className="w-6 h-6 fill-current" />
+              <Pause className="h-7 w-7 fill-current" />
             ) : (
-              <Play className="w-6 h-6 fill-current ml-0.5" />
+              <Play className="h-7 w-7 fill-current ml-0.5" />
             )}
           </Button>
 
-          {/* Volume Control */}
-          <div className="flex items-center gap-2 flex-1 ml-4">
-            <Volume2 className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={volume}
-              onChange={(e) => setVolume(Number(e.target.value))}
-              className="flex-1 h-1 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-              aria-label="Volume"
-            />
-            <span className="text-xs text-muted-foreground font-sans w-8 text-right">
-              {volume}%
-            </span>
-          </div>
+          <Button
+            onClick={onNext}
+            disabled={!hasNext}
+            size="icon-lg"
+            aria-label="Próxima rádio"
+            title="Próxima rádio"
+            className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+          >
+            <ChevronRight className="h-7 w-7" />
+          </Button>
         </div>
 
-        {/* Status indicator */}
-        <div className="mt-4 text-center">
+        {/* Volume */}
+        <div className="flex items-center gap-3">
+          <Volume2 className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+            aria-label="Volume"
+          />
+          <span className="w-8 text-right font-sans text-xs text-muted-foreground">
+            {volume}%
+          </span>
+        </div>
+
+        {/* Status */}
+        <div className="text-center">
           {hasError ? (
-            <p className="text-xs text-red-500 font-sans font-medium">
+            <p className="font-sans text-xs font-medium text-red-500">
               Não foi possível reproduzir esta estação
             </p>
           ) : isPlaying ? (
-            <p className="text-xs text-primary font-sans font-medium flex items-center justify-center gap-1">
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            <p className="flex items-center justify-center gap-1 font-sans text-xs font-medium text-primary">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
               Transmitindo ao vivo
             </p>
           ) : (
-            <p className="text-xs text-muted-foreground font-sans">Pausado</p>
+            <p className="font-sans text-xs text-muted-foreground">Pausado</p>
           )}
         </div>
       </div>
-    </div>
+    </motion.section>
   );
 }

@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
-  useState,
   useEffect,
+  useMemo,
+  useState,
   ReactNode,
 } from "react";
 
@@ -14,16 +16,34 @@ export interface Station {
   favicon?: string;
 }
 
+// Lista de rádios visível na tela onde a reprodução começou + posição atual.
+// `currentStation` é derivado daqui, então não existe estado duplicado para dessincronizar.
+interface Navigation {
+  queue: Station[];
+  index: number;
+}
+
 interface PlayerContextValue {
   currentStation: Station | null;
   history: Station[];
-  play: (station: Station) => void;
+  /** Lista completa de rádios da tela em que a reprodução foi iniciada. */
+  queue: Station[];
+  /** Índice da estação tocando dentro de `queue`. */
+  queueIndex: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  /** Toca `stationId` e usa `queue` como fila para navegação anterior/próxima. */
+  playFrom: (queue: Station[], stationId: string) => void;
+  next: () => void;
+  prev: () => void;
   close: () => void;
   clearHistory: () => void;
 }
 
 const STORAGE_KEY = "wavefm:history";
 const MAX_HISTORY = 30;
+
+const EMPTY_NAV: Navigation = { queue: [], index: 0 };
 
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
 
@@ -38,7 +58,7 @@ function loadHistory(): Station[] {
         s &&
         typeof s.id === "string" &&
         typeof s.name === "string" &&
-        typeof s.url === "string",
+        typeof s.url === "string"
     );
   } catch {
     return [];
@@ -46,8 +66,8 @@ function loadHistory(): Station[] {
 }
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
-  const [currentStation, setCurrentStation] = useState<Station | null>(null);
   const [history, setHistory] = useState<Station[]>([]);
+  const [nav, setNav] = useState<Navigation>(EMPTY_NAV);
 
   // Carrega o histórico persistido ao montar.
   useEffect(() => {
@@ -63,25 +83,65 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [history]);
 
-  // Toca uma estação e a registra no histórico (sem duplicar, mais recente no topo).
-  const play = (station: Station) => {
-    setCurrentStation(station);
-    setHistory((prev) => {
-      const filtered = prev.filter((s) => s.url !== station.url);
-      return [station, ...filtered].slice(0, MAX_HISTORY);
-    });
-  };
+  const pushHistory = useCallback((station: Station) => {
+    setHistory((prev) =>
+      [station, ...prev.filter((s) => s.url !== station.url)].slice(
+        0,
+        MAX_HISTORY
+      )
+    );
+  }, []);
 
-  const close = () => setCurrentStation(null);
+  const playFrom = useCallback(
+    (queue: Station[], stationId: string) => {
+      const index = queue.findIndex((s) => s.id === stationId);
+      if (index < 0) return;
+      setNav({ queue, index });
+      pushHistory(queue[index]);
+    },
+    [pushHistory]
+  );
 
-  const clearHistory = () => setHistory([]);
+  // Navega a fila sem dar a volta nas pontas (voltar na primeira / avançar na última não faz nada).
+  const step = useCallback(
+    (delta: number) => {
+      const total = nav.queue.length;
+      if (total < 2) return;
+      const index = Math.min(total - 1, Math.max(0, nav.index + delta));
+      if (index === nav.index) return;
+      setNav({ queue: nav.queue, index });
+      pushHistory(nav.queue[index]);
+    },
+    [nav, pushHistory]
+  );
+
+  const close = useCallback(() => setNav(EMPTY_NAV), []);
+  const clearHistory = useCallback(() => setHistory([]), []);
+
+  const currentStation =
+    nav.index >= 0 && nav.index < nav.queue.length
+      ? nav.queue[nav.index]
+      : null;
+
+  const value = useMemo<PlayerContextValue>(
+    () => ({
+      currentStation,
+      history,
+      queue: nav.queue,
+      queueIndex: nav.index,
+      hasPrev: nav.index > 0,
+      hasNext: nav.queue.length > 0 && nav.index < nav.queue.length - 1,
+      playFrom,
+      next: () => step(1),
+      prev: () => step(-1),
+      close,
+      clearHistory,
+    }),
+    [currentStation, history, nav, playFrom, step, close, clearHistory]
+  );
 
   return (
-    <PlayerContext.Provider
-      value={{ currentStation, history, play, close, clearHistory }}
-    >
-      {children}
-    </PlayerContext.Provider>
+    <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
   );
 }
 
