@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 
 // Estações cujo servidor de áudio só aceita HTTP (não suportam TLS/HTTPS).
 // Se o cliente tentar https nesses hosts, o browser lança ERR_SSL_PROTOCOL_ERROR.
@@ -59,9 +60,6 @@ function toHttp(url: string): string | null {
   }
 }
 
-// Altura inicial da barra recolhida, usada só até a medição real do DOM.
-const PEEK_HEIGHT_FALLBACK = 96;
-
 interface RadioPlayerProps {
   station: {
     name: string;
@@ -69,6 +67,10 @@ interface RadioPlayerProps {
     favicon?: string;
     country?: string;
   } | null;
+  isPlaying: boolean;
+  onTogglePlay: () => void;
+  /** Usado quando o stream falha, para resetar a interface para "pausado". */
+  onPause: () => void;
   onClose?: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -78,21 +80,21 @@ interface RadioPlayerProps {
 
 export default function RadioPlayer({
   station,
+  isPlaying,
+  onTogglePlay,
+  onPause,
   onClose,
   onPrev,
   onNext,
   hasPrev = false,
   hasNext = false,
 }: RadioPlayerProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [volume, setVolume] = useState(70);
   const [expanded, setExpanded] = useState(true);
-  const [peekHeight, setPeekHeight] = useState(PEEK_HEIGHT_FALLBACK);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const retriedHttpRef = useRef(false);
-  const peekRef = useRef<HTMLDivElement>(null);
   const didDragRef = useRef(false);
   const dragControls = useDragControls();
 
@@ -114,7 +116,7 @@ export default function RadioPlayer({
       audio.play().catch(() => {
         console.error("Erro ao reproduzir rádio");
         setHasError(true);
-        setIsPlaying(false);
+        onPause();
       });
     } else {
       audio.pause();
@@ -133,18 +135,6 @@ export default function RadioPlayer({
     setHasError(false);
   }, [station]);
 
-  // Mede a altura da barra recolhida (handle + identificação + play rápido)
-  // para que o snap do gesto de arrastar caia exatamente no fim do conteúdo.
-  useEffect(() => {
-    const el = peekRef.current;
-    if (!el) return;
-    const measure = () => setPeekHeight(el.offsetHeight);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [station]);
-
   const handleError = () => {
     const audio = audioRef.current;
     if (audio && station && !retriedHttpRef.current) {
@@ -156,20 +146,20 @@ export default function RadioPlayer({
         audio.play().catch(() => {
           console.error("Falha ao reproduzir stream de áudio");
           setHasError(true);
-          setIsPlaying(false);
+          onPause();
         });
         return;
       }
     }
     console.error("Falha ao reproduzir stream de áudio");
     setHasError(true);
-    setIsPlaying(false);
+    onPause();
   };
 
   const handlePlayPause = () => {
     if (!station) return;
     setHasError(false);
-    setIsPlaying(!isPlaying);
+    onTogglePlay();
   };
 
   const handleDragEnd = (_event: unknown, info: PanInfo) => {
@@ -205,13 +195,6 @@ export default function RadioPlayer({
       dragElastic={{ top: 0.02, bottom: 0.45 }}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      initial={false}
-      animate={{ height: collapsible && !expanded ? peekHeight : "auto" }}
-      transition={
-        collapsible
-          ? { type: "spring", stiffness: 420, damping: 38 }
-          : { duration: 0 }
-      }
       aria-label="Player de rádio"
       className="fixed bottom-0 left-0 right-0 z-40 overflow-hidden border-t border-border bg-card shadow-2xl md:bottom-6 md:left-auto md:right-6 md:max-w-sm md:rounded-2xl md:border"
     >
@@ -232,10 +215,7 @@ export default function RadioPlayer({
       </button>
 
       {/* Barra sempre visível: identificação + play rápido (recolhido) */}
-      <div
-        ref={peekRef}
-        className="flex items-center gap-3 px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:px-6 md:py-3"
-      >
+      <div className="flex items-center gap-3 px-4 pt-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] md:px-6 md:py-3">
         {station.favicon && (
           <img
             src={station.favicon}
@@ -291,80 +271,91 @@ export default function RadioPlayer({
         )}
       </div>
 
-      {/* Controles — inertes enquanto recolhido para não receber foco/teclado */}
+      {/* Recolhimento por max-height em CSS: sem medir nada e sem risco de a folha
+          colapsar para 0px (o que esconderia o player inteiro). */}
       <div
-        inert={collapsible && !expanded ? true : undefined}
-        className="space-y-4 px-4 pb-5 md:px-6 md:pb-6"
+        className={cn(
+          "overflow-hidden transition-[max-height,opacity] duration-300 ease-out",
+          collapsible && !expanded
+            ? "max-h-0 opacity-0"
+            : "max-h-[26rem] opacity-100"
+        )}
       >
-        {/* Controles de mídia: anterior / play / próxima */}
-        <div className="flex items-center justify-center gap-5 md:gap-7">
-          <Button
-            onClick={onPrev}
-            disabled={!hasPrev}
-            size="icon-lg"
-            aria-label="Rádio anterior"
-            title="Rádio anterior"
-            className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
-          >
-            <ChevronLeft className="h-7 w-7" />
-          </Button>
+        {/* Controles — inertes enquanto recolhido para não receber foco/teclado */}
+        <div
+          inert={collapsible && !expanded ? true : undefined}
+          className="space-y-4 px-4 pb-5 md:px-6 md:pb-6"
+        >
+          {/* Controles de mídia: anterior / play / próxima */}
+          <div className="flex items-center justify-center gap-5 md:gap-7">
+            <Button
+              onClick={onPrev}
+              disabled={!hasPrev}
+              size="icon-lg"
+              aria-label="Rádio anterior"
+              title="Rádio anterior"
+              className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronLeft className="h-7 w-7" />
+            </Button>
 
-          <Button
-            onClick={handlePlayPause}
-            size="lg"
-            aria-label={isPlaying ? "Pausar" : "Reproduzir"}
-            className="h-16 w-16 rounded-full bg-primary text-white shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
-          >
-            {isPlaying ? (
-              <Pause className="h-7 w-7 fill-current" />
+            <Button
+              onClick={handlePlayPause}
+              size="lg"
+              aria-label={isPlaying ? "Pausar" : "Reproduzir"}
+              className="h-16 w-16 rounded-full bg-primary text-white shadow-lg transition-all hover:bg-primary/90 hover:shadow-xl active:scale-95"
+            >
+              {isPlaying ? (
+                <Pause className="h-7 w-7 fill-current" />
+              ) : (
+                <Play className="h-7 w-7 fill-current ml-0.5" />
+              )}
+            </Button>
+
+            <Button
+              onClick={onNext}
+              disabled={!hasNext}
+              size="icon-lg"
+              aria-label="Próxima rádio"
+              title="Próxima rádio"
+              className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              <ChevronRight className="h-7 w-7" />
+            </Button>
+          </div>
+
+          {/* Volume */}
+          <div className="flex items-center gap-3">
+            <Volume2 className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={volume}
+              onChange={(e) => setVolume(Number(e.target.value))}
+              className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
+              aria-label="Volume"
+            />
+            <span className="w-8 text-right font-sans text-xs text-muted-foreground">
+              {volume}%
+            </span>
+          </div>
+
+          {/* Status */}
+          <div className="text-center">
+            {hasError ? (
+              <p className="font-sans text-xs font-medium text-red-500">
+                Não foi possível reproduzir esta estação
+              </p>
+            ) : isPlaying ? (
+              <p className="flex items-center justify-center gap-1 font-sans text-xs font-medium text-primary">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                Transmitindo ao vivo
+              </p>
             ) : (
-              <Play className="h-7 w-7 fill-current ml-0.5" />
+              <p className="font-sans text-xs text-muted-foreground">Pausado</p>
             )}
-          </Button>
-
-          <Button
-            onClick={onNext}
-            disabled={!hasNext}
-            size="icon-lg"
-            aria-label="Próxima rádio"
-            title="Próxima rádio"
-            className="rounded-full text-primary transition-colors hover:bg-primary/10 hover:text-primary disabled:opacity-30 disabled:hover:bg-transparent"
-          >
-            <ChevronRight className="h-7 w-7" />
-          </Button>
-        </div>
-
-        {/* Volume */}
-        <div className="flex items-center gap-3">
-          <Volume2 className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={volume}
-            onChange={(e) => setVolume(Number(e.target.value))}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-primary"
-            aria-label="Volume"
-          />
-          <span className="w-8 text-right font-sans text-xs text-muted-foreground">
-            {volume}%
-          </span>
-        </div>
-
-        {/* Status */}
-        <div className="text-center">
-          {hasError ? (
-            <p className="font-sans text-xs font-medium text-red-500">
-              Não foi possível reproduzir esta estação
-            </p>
-          ) : isPlaying ? (
-            <p className="flex items-center justify-center gap-1 font-sans text-xs font-medium text-primary">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
-              Transmitindo ao vivo
-            </p>
-          ) : (
-            <p className="font-sans text-xs text-muted-foreground">Pausado</p>
-          )}
+          </div>
         </div>
       </div>
     </motion.section>

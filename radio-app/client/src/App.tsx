@@ -12,10 +12,23 @@ import Explore from "./pages/Explore";
 
 // Player persistente entre rotas: continua tocando ao navegar.
 function PlayerRoot() {
-  const { currentStation, close, next, prev, hasNext, hasPrev } = usePlayer();
+  const {
+    currentStation,
+    isPlaying,
+    togglePlay,
+    pause,
+    close,
+    next,
+    prev,
+    hasNext,
+    hasPrev,
+  } = usePlayer();
   return (
     <RadioPlayer
       station={currentStation}
+      isPlaying={isPlaying}
+      onTogglePlay={togglePlay}
+      onPause={pause}
       onClose={close}
       onNext={next}
       onPrev={prev}
@@ -45,10 +58,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        switchable
-      >
+      <ThemeProvider defaultTheme="light" switchable>
         <PlayerProvider>
           <TooltipProvider>
             <Toaster />

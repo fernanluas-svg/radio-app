@@ -25,6 +25,11 @@ interface Navigation {
 
 interface PlayerContextValue {
   currentStation: Station | null;
+  /**
+   * Intenção de reprodução. Vive no contexto (e não no player) para que tocar
+   * num card da lista já comece a tocar, sem exigir um segundo clique no player.
+   */
+  isPlaying: boolean;
   history: Station[];
   /** Lista completa de rádios da tela em que a reprodução foi iniciada. */
   queue: Station[];
@@ -34,6 +39,9 @@ interface PlayerContextValue {
   hasNext: boolean;
   /** Toca `stationId` e usa `queue` como fila para navegação anterior/próxima. */
   playFrom: (queue: Station[], stationId: string) => void;
+  togglePlay: () => void;
+  /** Interrompe a reprodução (usado quando o stream falha). */
+  pause: () => void;
   next: () => void;
   prev: () => void;
   close: () => void;
@@ -68,6 +76,7 @@ function loadHistory(): Station[] {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<Station[]>([]);
   const [nav, setNav] = useState<Navigation>(EMPTY_NAV);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Carrega o histórico persistido ao montar.
   useEffect(() => {
@@ -96,11 +105,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     (queue: Station[], stationId: string) => {
       const index = queue.findIndex((s) => s.id === stationId);
       if (index < 0) return;
-      setNav({ queue, index });
+      // Re-tocar no mesmo card não recria a fila: mantém a referência da estação
+      // para o player não reiniciar o stream do zero.
+      setNav((prev) =>
+        prev.index === index && prev.queue[index] === queue[index]
+          ? prev
+          : { queue, index }
+      );
+      setIsPlaying(true);
       pushHistory(queue[index]);
     },
     [pushHistory]
   );
+
+  const togglePlay = useCallback(() => setIsPlaying((v) => !v), []);
+  const pause = useCallback(() => setIsPlaying(false), []);
 
   // Navega a fila sem dar a volta nas pontas (voltar na primeira / avançar na última não faz nada).
   const step = useCallback(
@@ -115,7 +134,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [nav, pushHistory]
   );
 
-  const close = useCallback(() => setNav(EMPTY_NAV), []);
+  const close = useCallback(() => {
+    setNav(EMPTY_NAV);
+    setIsPlaying(false);
+  }, []);
   const clearHistory = useCallback(() => setHistory([]), []);
 
   const currentStation =
@@ -126,18 +148,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PlayerContextValue>(
     () => ({
       currentStation,
+      isPlaying,
       history,
       queue: nav.queue,
       queueIndex: nav.index,
       hasPrev: nav.index > 0,
       hasNext: nav.queue.length > 0 && nav.index < nav.queue.length - 1,
       playFrom,
+      togglePlay,
+      pause,
       next: () => step(1),
       prev: () => step(-1),
       close,
       clearHistory,
     }),
-    [currentStation, history, nav, playFrom, step, close, clearHistory]
+    [
+      currentStation,
+      isPlaying,
+      history,
+      nav,
+      playFrom,
+      togglePlay,
+      pause,
+      step,
+      close,
+      clearHistory,
+    ]
   );
 
   return (
